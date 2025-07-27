@@ -1,9 +1,10 @@
-package db
+package services
 
 import (
 	"context"
 	"errors"
 	"log"
+	"server/db"
 	"server/models"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -19,7 +20,7 @@ func AddUser(registerUserReq models.RegisterUserRequest) (string, error) {
 		NodesLimit: 100,
 	}
 	filter := bson.M{"username": registerUserReq.Username}
-	cursor, err := usersColl.Find(context.TODO(), filter)
+	cursor, err := db.UsersColl.Find(context.TODO(), filter)
 	if err != nil {
 		return "", err
 	}
@@ -28,7 +29,7 @@ func AddUser(registerUserReq models.RegisterUserRequest) (string, error) {
 	if len(users) > 0 {
 		return "", errors.New("user with provided userId exists")
 	}
-	ack, err := usersColl.InsertOne(context.TODO(), user)
+	ack, err := db.UsersColl.InsertOne(context.TODO(), user)
 	if err != nil {
 		return "nil", err
 	}
@@ -51,7 +52,7 @@ func AddNode(newNodeReq models.RegisterNodeRequest) (string, error) {
 		Device:     newNodeReq.Device,
 	}
 	filter := bson.M{"endpoint": newNodeReq.Endpoint}
-	cursor, err := nodesColl.Find(context.TODO(), filter)
+	cursor, err := db.NodesColl.Find(context.TODO(), filter)
 	if err != nil {
 		return "", err
 	}
@@ -60,7 +61,7 @@ func AddNode(newNodeReq models.RegisterNodeRequest) (string, error) {
 	if len(nodes) > 0 {
 		return "", errors.New("node with provided nodeId exists")
 	}
-	ack, err := nodesColl.InsertOne(context.TODO(), newNode)
+	ack, err := db.NodesColl.InsertOne(context.TODO(), newNode)
 	if err != nil {
 		return "", err
 	}
@@ -75,7 +76,7 @@ func GetUsersNodes(userId string) ([]models.Node, error) {
 	}
 
 	filter := bson.M{"accessed_by": id}
-	cursor, err := nodesColl.Find(context.TODO(), filter)
+	cursor, err := db.NodesColl.Find(context.TODO(), filter)
 	if err != nil {
 		return nil, err
 	}

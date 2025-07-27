@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"server/db"
 	"server/models"
+	"server/services"
 )
 
 // func getUser(w http.ResponseWriter, r *http.Request) {
@@ -19,7 +19,7 @@ func RegisterUser(w http.ResponseWriter, r *http.Request) {
 
 	var registerUserReq models.RegisterUserRequest
 	json.NewDecoder(r.Body).Decode(&registerUserReq)
-	userId, err := db.AddUser(registerUserReq)
+	userId, err := services.AddUser(registerUserReq)
 	if err != nil {
 		log.Println(err)
 		w.Write([]byte(err.Error()))
@@ -32,7 +32,20 @@ func RegisterNode(w http.ResponseWriter, r *http.Request) {
 
 	var registerNodeReq models.RegisterNodeRequest
 	json.NewDecoder(r.Body).Decode(&registerNodeReq)
-	newNodeId, err := db.AddNode(registerNodeReq)
+	newNodeId, err := services.AddNode(registerNodeReq)
+	if err != nil {
+		log.Println(err)
+		w.Write([]byte(err.Error()))
+	}
+	json.NewEncoder(w).Encode(newNodeId)
+}
+
+func GetPeers(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	var registerNodeReq models.RegisterNodeRequest
+	json.NewDecoder(r.Body).Decode(&registerNodeReq)
+	newNodeId, err := services.AddNode(registerNodeReq)
 	if err != nil {
 		log.Println(err)
 		w.Write([]byte(err.Error()))

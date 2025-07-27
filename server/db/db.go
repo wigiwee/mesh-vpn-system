@@ -13,8 +13,8 @@ const dbName = "CloadRoute"
 const users = "users"
 const nodes = "nodes"
 
-var usersColl *mongo.Collection
-var nodesColl *mongo.Collection
+var UsersColl *mongo.Collection
+var NodesColl *mongo.Collection
 
 func init() {
 	clientOption := options.Client().ApplyURI(connectionString)
@@ -29,6 +29,6 @@ func init() {
 	}
 	log.Println("Mongodb connected")
 
-	nodesColl = client.Database(dbName).Collection(nodes)
-	usersColl = client.Database(dbName).Collection(users)
+	NodesColl = client.Database(dbName).Collection(nodes)
+	UsersColl = client.Database(dbName).Collection(users)
 }
