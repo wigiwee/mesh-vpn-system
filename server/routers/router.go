@@ -12,7 +12,8 @@ func Router() *mux.Router {
 
 	r.HandleFunc("/api/registerUser", controllers.RegisterUser).Methods("POST")
 	r.HandleFunc("/api/registerNode", controllers.RegisterNode).Methods("POST")
-	r.HandleFunc("/api/getPeers", controllers.GetPeers).Methods("GET")
+	r.HandleFunc("/api/getUserPeers", controllers.GetPeersOfUser).Methods("GET")
+	r.HandleFunc("/api/getNodePeers", controllers.GetPeersOfNode).Methods("GET")
 	// r.HandleFunc("/api/registerUser", RegisterUser())
 	// r.HandleFunc("/api/registerUser", RegisterUser())
 

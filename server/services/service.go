@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"server/db"
 	"server/models"
@@ -66,10 +67,12 @@ func AddNode(newNodeReq models.RegisterNodeRequest) (string, error) {
 		return "", err
 	}
 	newNodeId, _ := ack.InsertedID.(primitive.ObjectID)
+
+	log.Printf("added new node: %s -> %s \n", newNode.Endpoint, newNodeId.Hex())
 	return newNodeId.Hex(), nil
 }
 
-func GetUsersNodes(userId string) ([]models.Node, error) {
+func FetchUserNodes(userId string) ([]models.Node, error) {
 	id, err := primitive.ObjectIDFromHex(userId)
 	if err != nil {
 		return nil, err
@@ -85,14 +88,19 @@ func GetUsersNodes(userId string) ([]models.Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	marshalResult, err := bson.Marshal(result)
-	if err != nil {
-		return nil, err
-	}
+	fmt.Println("result: ", result)
 	var nodes []models.Node
-	err = bson.Unmarshal(marshalResult, &nodes)
-	if err != nil {
-		return nil, err
+	for _, m := range result {
+		var node models.Node
+		bsonBytes, err := bson.Marshal(m)
+		if err != nil {
+			return nil, err
+		}
+		err = bson.Unmarshal(bsonBytes, &node)
+		if err != nil {
+			return nil, err
+		}
+		nodes = append(nodes, node)
 	}
 	return nodes, nil
 }
