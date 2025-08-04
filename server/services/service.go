@@ -49,8 +49,9 @@ func AddNode(newNodeReq models.RegisterNodeRequest) (string, error) {
 	newNode := &models.Node{
 		AccessedBy: userPrimitiveId,
 		Endpoint:   newNodeReq.Endpoint,
-		IPAddress:  "100.100.100.100",
+		IPAddress:  newNodeReq.IPAddress,
 		Device:     newNodeReq.Device,
+		PublicKey:  newNodeReq.PublicKey,
 	}
 	filter := bson.M{"endpoint": newNodeReq.Endpoint}
 	cursor, err := db.NodesColl.Find(context.TODO(), filter)

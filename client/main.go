@@ -12,11 +12,12 @@ import (
 func main() {
 
 	privateKey, publicKey := generateKeys()
-	fmt.Println(privateKey)
-	fmt.Println(publicKey)
 
 	selfIf := "10.0.0.1"
-	endpoint := "192.168.0.5:51820"
+	endpoint, err := GetPublicEndpoint()
+	if err != nil {
+		log.Println("STUN failed: " + err.Error())
+	}
 
 	nodeId, err := registerNode(RegisterRequest{
 		PublicKey: publicKey,
