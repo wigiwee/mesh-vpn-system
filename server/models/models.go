@@ -3,7 +3,7 @@ package models
 import "go.mongodb.org/mongo-driver/bson/primitive"
 
 type Node struct {
-	Id         primitive.ObjectID `json:"id" bson:"_id"`
+	Id         primitive.ObjectID `json:"id" bson:"_id,omitempty"`
 	AccessedBy primitive.ObjectID `json:"accessed_by" bson:"accessed_by"`
 	PublicKey  string             `json:"public_key"`
 	IPAddress  string             `json:"ip_address"`
@@ -12,7 +12,7 @@ type Node struct {
 }
 
 type User struct {
-	Id         primitive.ObjectID `json:"id" bson:"_id"`
+	Id         primitive.ObjectID `json:"id" bson:"_id,omitempty"`
 	Username   string             `json:"username"`
 	Name       string             `json:"name"`
 	NodesLimit int                `json:"nodes_limit"`

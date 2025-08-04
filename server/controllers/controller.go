@@ -41,7 +41,7 @@ func GetPeersOfUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	params := mux.Vars(r)
-	fmt.Println(params["user_id"])
+	fmt.Println("received user_id: " + params["user_id"])
 	nodes, err := services.FetchUserNodes(params["user_id"])
 	if err != nil {
 		log.Println(err)
@@ -52,20 +52,31 @@ func GetPeersOfUser(w http.ResponseWriter, r *http.Request) {
 
 func GetPeersOfNode(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-
-	params := mux.Vars(r)
-	nodes, err := services.FetchUserNodes(params["user_id"])
+	fmt.Println(r.URL.String())
+	query := r.URL.Query()
+	log.Println("received node_id" + query.Get("node_id"))
+	log.Println("received user_id" + query.Get("user_id"))
+	nodeId := query.Get("node_id")
+	userId := query.Get("user_id")
+	nodes, err := services.FetchUserNodes(userId)
 	if err != nil {
 		log.Println(err)
 		w.Write([]byte(err.Error()))
 	}
-	if len(params["node_id"]) == 0 {
+	if len(nodeId) == 0 {
 		log.Println("nodeId not found")
 		w.Write([]byte("nodeId not found"))
 		return
 	}
+
+	if len(userId) == 0 {
+		log.Println("userId not found")
+		w.Write([]byte("userId not found"))
+		return
+	}
+
 	for idx, node := range nodes {
-		if node.Id.Hex() == params["node_id"] {
+		if node.Id.Hex() == nodeId {
 			nodes = append(nodes[:idx], nodes[idx+1:]...)
 			break
 		}
