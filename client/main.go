@@ -1,41 +1,49 @@
 package main
 
 import (
+	"client/api"
+	"client/config"
+	"client/helper"
+	"client/models"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
-
-	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
 func main() {
 
-	privateKey, publicKey := generateKeys()
+	privateKey, publicKey := helper.GenerateKeys()
 
-	selfIf := "10.0.0.1"
+	selfIp, err := helper.GetIpAddr()
+	if err != nil {
+		log.Fatal(err)
+	}
 	endpoint, err := GetPublicEndpoint()
 	if err != nil {
 		log.Println("STUN failed: " + err.Error())
 	}
-
-	nodeId, err := registerNode(RegisterRequest{
+	hostname, err := os.Hostname()
+	if err != nil {
+		log.Println("error fetching hostname")
+	}
+	nodeId, err := api.RegisterNode(models.RegisterRequest{
 		PublicKey: publicKey,
-		IPAddress: selfIf,
+		IPAddress: selfIp,
 		Endpoint:  endpoint,
-		Device:    "deviceName",
-		UserId:    USER_ID,
+		Device:    hostname,
+		UserId:    config.USER_ID,
 	})
 	if err != nil {
 		log.Panic(err)
 	}
-	NODE_ID = nodeId[1 : len(nodeId)-2]
-	fmt.Println("nodeID ", NODE_ID)
-	peers, err := getPeers(USER_ID, NODE_ID)
+	config.NODE_ID = nodeId[1 : len(nodeId)-2]
+	fmt.Println("nodeID ", config.NODE_ID)
+	peers, err := api.GetPeers(config.USER_ID, config.NODE_ID)
 	if err != nil {
 		log.Panic(err)
 	}
-	err = writeWGConfig(privateKey, selfIf, peers)
+	err = writeWGConfig(privateKey, selfIp, peers)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -45,9 +53,4 @@ func main() {
 	cmd.Stderr = os.Stderr
 	_ = cmd.Run()
 	fmt.Println("Brought up WireGuard interface ✅")
-}
-
-func generateKeys() (private, public string) {
-	privateKey, _ := wgtypes.GeneratePrivateKey()
-	return privateKey.String(), privateKey.PublicKey().String()
 }

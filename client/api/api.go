@@ -1,34 +1,39 @@
-package main
+package api
 
 import (
 	"bytes"
+	"client/config"
+	"client/models"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
+	"strconv"
 )
 
-func registerNode(registerReq RegisterRequest) (string, error) {
+func RegisterNode(registerReq models.RegisterRequest) (string, error) {
 	data, err := json.Marshal(registerReq)
 	if err != nil {
 		return "", err
 	}
-	resp, err := http.Post(SERVER_URL+"/api/registerNode", "application/json", bytes.NewBuffer(data))
+	resp, err := http.Post(config.SERVER_URL+"/api/registerNode", "application/json", bytes.NewBuffer(data))
 	if err != nil {
 		return "", err
 	}
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(resp.Body)
 	log.Println("register node server response : " + string(body))
-	//TODO: implement status codes from server side and send appropriate responce accordingly
+	if resp.Status == strconv.Itoa(http.StatusOK) {
+		return "", fmt.Errorf(string(body))
+	}
 	return string(body), nil
 }
 
-func getPeers(userId, nodeId string) ([]Node, error) {
+func GetPeers(userId, nodeId string) ([]models.Node, error) {
 
-	u, err := url.Parse(SERVER_URL + "/api/getNodePeers")
+	u, err := url.Parse(config.SERVER_URL + "/api/getNodePeers")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -45,7 +50,7 @@ func getPeers(userId, nodeId string) ([]Node, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	var peers []Node
+	var peers []models.Node
 	if err := json.NewDecoder(resp.Body).Decode(&peers); err != nil {
 		return nil, err
 	}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"client/config"
 	"fmt"
 	"log"
 	"net"
@@ -11,7 +12,7 @@ import (
 )
 
 func GetPublicEndpoint() (string, error) {
-	conn, err := net.Dial("udp", STUN_SERVERS[1])
+	conn, err := net.Dial("udp", config.STUN_SERVERS[1])
 	if err != nil {
 		return "", err
 	}

@@ -1,12 +1,14 @@
 package main
 
 import (
+	"client/config"
+	"client/models"
 	"fmt"
 	"os"
 	"strings"
 )
 
-func writeWGConfig(privateKey string, selfIP string, peers []Node) error {
+func writeWGConfig(privateKey string, selfIP string, peers []models.Node) error {
 
 	var sb strings.Builder
 	sb.WriteString("[interface]\n")
@@ -22,5 +24,5 @@ func writeWGConfig(privateKey string, selfIP string, peers []Node) error {
 		sb.WriteString(fmt.Sprintf("Endpoint = %s\n\n", p.Endpoint))
 	}
 
-	return os.WriteFile(WG_CONFIG_FILE_LOCATION, []byte(sb.String()), 0600)
+	return os.WriteFile(config.WG_CONFIG_FILE_LOCATION, []byte(sb.String()), 0600)
 }

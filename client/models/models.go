@@ -1,4 +1,4 @@
-package main
+package models
 
 type RegisterRequest struct {
 	PublicKey string `json:"public_key" bson:"public_key"`
