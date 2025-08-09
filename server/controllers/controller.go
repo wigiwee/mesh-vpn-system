@@ -19,8 +19,10 @@ func RegisterUser(w http.ResponseWriter, r *http.Request) {
 	userId, err := services.AddUser(registerUserReq)
 	if err != nil {
 		log.Println(err)
+		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(err.Error()))
 	}
+	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(userId)
 }
 
@@ -32,8 +34,10 @@ func RegisterNode(w http.ResponseWriter, r *http.Request) {
 	newNodeId, err := services.AddNode(registerNodeReq)
 	if err != nil {
 		log.Println(err)
+		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(err.Error()))
 	}
+	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(newNodeId)
 }
 
@@ -45,8 +49,10 @@ func GetPeersOfUser(w http.ResponseWriter, r *http.Request) {
 	nodes, err := services.FetchUserNodes(params["user_id"])
 	if err != nil {
 		log.Println(err)
+		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(err.Error()))
 	}
+	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(nodes)
 }
 
@@ -61,6 +67,7 @@ func GetPeersOfNode(w http.ResponseWriter, r *http.Request) {
 	nodes, err := services.FetchUserNodes(userId)
 	if err != nil {
 		log.Println(err)
+		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(err.Error()))
 	}
 	if len(nodeId) == 0 {
@@ -81,5 +88,6 @@ func GetPeersOfNode(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
+	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(nodes)
 }
