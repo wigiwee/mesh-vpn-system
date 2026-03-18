@@ -13,6 +13,7 @@ const (
 	SERVER_URL               = "http://localhost:4000"
 	CONFIG_DIR               = "local_files"
 	APP_CONFIG_FILE_LOCATION = CONFIG_DIR + "/" + "app.json"
+	INTERFACE_NAME           = "wg0"
 )
 
 var (

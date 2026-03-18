@@ -3,12 +3,14 @@ package main
 import (
 	"client/api"
 	"client/config"
+	"client/helper"
 	"client/models"
 	"crypto/rand"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
+	"time"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -62,24 +64,19 @@ func main() {
 		config.WriteConfigFile()
 	}
 
-	peers, err := api.GetPeers(config.ConfigObj.UserId, config.ConfigObj.NodeId)
-	if err != nil {
-		log.Println(peers)
-		log.Println(err)
-		log.Panic(err)
-	}
-	err = writeWGConfig(config.ConfigObj.PrivateKey, config.ConfigObj.NodeIPAddr, peers)
+	err := config.WriteWGConfig()
 	if err != nil {
 		log.Panic(err)
 	}
-	config.WriteConfigFile()
-	initialcmd := exec.Command("sudo", "wg-quick", "down", config.WG_CONFIG_FILE_LOCATION)
-	initialcmd.Stdout = os.Stdout
-	initialcmd.Stderr = os.Stderr
-	err = initialcmd.Run()
-	if err != nil {
-		log.Printf("[ERROR]: %s\n", err)
-	}
+
+	// initialcmd := exec.Command("sudo", "wg-quick", "down", config.WG_CONFIG_FILE_LOCATION)
+	// initialcmd.Stdout = os.Stdout
+	// initialcmd.Stderr = os.Stderr
+	// err = initialcmd.Run()
+	// if err != nil {
+	// 	log.Printf("[ERROR]: %s\n", err)
+	// }
+
 	cmd := exec.Command("sudo", "wg-quick", "up", config.WG_CONFIG_FILE_LOCATION)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -87,5 +84,23 @@ func main() {
 	if err != nil {
 		log.Printf("[ERROR]: %s\n", err)
 	}
-	fmt.Println("Brought up WireGuard interface ✅")
+	log.Println("Brought up WireGuard interface ✅")
+
+	//Daemon loop
+	for {
+		log.Println(config.Peers)
+		peers, err := api.GetPeers(config.ConfigObj.UserId, config.ConfigObj.NodeId)
+		if err != nil {
+			log.Panic(err)
+		}
+		added, removed := helper.SyncPeers(peers)
+
+		for _, peer := range added {
+			config.AddPeer(peer)
+		}
+		for _, peer := range removed {
+			config.RemovePeer(peer)
+		}
+		time.Sleep(10 * time.Second)
+	}
 }
