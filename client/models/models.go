@@ -1,11 +1,17 @@
 package models
 
-type RegisterRequest struct {
+type RegisterNodeRequest struct {
 	PublicKey string `json:"public_key" bson:"public_key"`
 	IPAddress string `json:"ip_address" bson:"ip_address"`
 	Endpoint  string `json:"endpoint"`
 	Device    string `json:"device"`
 	UserId    string `json:"user_id" bson:"user_id"`
+	Hostname  string `json:"hostname" bson:"hostname"`
+}
+
+type RegisterNodeResponse struct {
+	IPAddress string `json:"ip_address" bson:"ip_address"`
+	NodeId    string `json:"node_id" bson:"node_id"`
 }
 
 type Node struct {
@@ -15,4 +21,5 @@ type Node struct {
 	IPAddress  string `json:"ip_address"`
 	Endpoint   string `json:"endpoint"`
 	Device     string `json:"device"`
+	Hostname   string `json:"hostname"`
 }

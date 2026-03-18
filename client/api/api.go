@@ -10,25 +10,32 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"strconv"
 )
 
-func RegisterNode(registerReq models.RegisterRequest) (string, error) {
+func RegisterNode(registerReq models.RegisterNodeRequest) (models.RegisterNodeResponse, error) {
 	data, err := json.Marshal(registerReq)
+	var registerNodeRes models.RegisterNodeResponse
 	if err != nil {
-		return "", err
+		return registerNodeRes, err
 	}
 	resp, err := http.Post(config.SERVER_URL+"/api/registerNode", "application/json", bytes.NewBuffer(data))
 	if err != nil {
-		return "", err
+		return registerNodeRes, err
 	}
 	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
-	log.Println("register node server response : " + string(body))
-	if resp.Status == strconv.Itoa(http.StatusOK) {
-		return "", fmt.Errorf(string(body))
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return registerNodeRes, err
 	}
-	return string(body), nil
+	err = json.Unmarshal(body, &registerNodeRes)
+	if err != nil {
+		return registerNodeRes, err
+	}
+	log.Println("register node server response : " + registerNodeRes.NodeId + " " + registerNodeRes.IPAddress)
+	// if resp.Status == strconv.Itoa(http.StatusOK) {
+	// 	return models.RegisterNodeResponse{}, fmt.Errorf("%s", string(body))
+	// }
+	return registerNodeRes, nil
 }
 
 func GetPeers(userId, nodeId string) ([]models.Node, error) {
