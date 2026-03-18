@@ -27,18 +27,19 @@ func RegisterUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func RegisterNode(w http.ResponseWriter, r *http.Request) {
+	log.Println("entering register node process")
 	w.Header().Set("Content-Type", "application/json")
 
 	var registerNodeReq models.RegisterNodeRequest
 	json.NewDecoder(r.Body).Decode(&registerNodeReq)
-	newNodeId, err := services.AddNode(registerNodeReq)
+	registerNodeRes, err := services.AddNode(registerNodeReq)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(err.Error()))
 	}
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(newNodeId)
+	json.NewEncoder(w).Encode(registerNodeRes)
 }
 
 func GetPeersOfUser(w http.ResponseWriter, r *http.Request) {

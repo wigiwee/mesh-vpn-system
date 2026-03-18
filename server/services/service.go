@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"server/db"
+	"server/helper"
 	"server/models"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -40,37 +41,44 @@ func AddUser(registerUserReq models.RegisterUserRequest) (string, error) {
 	return newUserId.Hex(), nil
 }
 
-func AddNode(newNodeReq models.RegisterNodeRequest) (string, error) {
+func AddNode(newNodeReq models.RegisterNodeRequest) (models.RegisterNodeResponse, error) {
+	log.Println("addnode method executing started")
 	userPrimitiveId, err := primitive.ObjectIDFromHex(newNodeReq.UserId)
 	if err != nil {
 		log.Println(err)
-		return "", err
+		return models.RegisterNodeResponse{}, err
 	}
+
 	newNode := &models.Node{
 		AccessedBy: userPrimitiveId,
 		Endpoint:   newNodeReq.Endpoint,
-		IPAddress:  newNodeReq.IPAddress,
+		IPAddress:  helper.GenerateRandomIPAddr(),
 		Device:     newNodeReq.Device,
 		PublicKey:  newNodeReq.PublicKey,
+		Hostname:   newNodeReq.Hostname,
 	}
-	filter := bson.M{"endpoint": newNodeReq.Endpoint}
+
+	filter := bson.M{"$or": []bson.M{
+		{"endpoint": newNode.Endpoint},
+		{"ip_address": newNode.IPAddress},
+	}}
 	cursor, err := db.NodesColl.Find(context.TODO(), filter)
 	if err != nil {
-		return "", err
+		return models.RegisterNodeResponse{}, err
 	}
 	var nodes []models.Node
 	cursor.All(context.TODO(), &nodes)
 	if len(nodes) > 0 {
-		return "", errors.New("node with provided nodeId exists")
+		return models.RegisterNodeResponse{}, errors.New("node with provided nodeId or IP address exists")
 	}
 	ack, err := db.NodesColl.InsertOne(context.TODO(), newNode)
 	if err != nil {
-		return "", err
+		return models.RegisterNodeResponse{}, err
 	}
 	newNodeId, _ := ack.InsertedID.(primitive.ObjectID)
 
 	log.Printf("added new node: %s -> %s \n", newNode.Endpoint, newNodeId.Hex())
-	return newNodeId.Hex(), nil
+	return models.RegisterNodeResponse{NodeId: newNodeId.Hex(), IPAddress: newNode.IPAddress}, nil
 }
 
 func FetchUserNodes(userId string) ([]models.Node, error) {

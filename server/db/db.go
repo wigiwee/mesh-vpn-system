@@ -26,6 +26,8 @@ func init() {
 
 	if err := client.Ping(context.Background(), nil); err != nil {
 		log.Fatal("Ping failed:", err)
+	} else {
+		log.Println("ping successful")
 	}
 	log.Println("Mongodb connected")
 
