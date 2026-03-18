@@ -27,7 +27,6 @@ func RegisterUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func RegisterNode(w http.ResponseWriter, r *http.Request) {
-	log.Println("entering register node process")
 	w.Header().Set("Content-Type", "application/json")
 
 	var registerNodeReq models.RegisterNodeRequest
@@ -82,13 +81,19 @@ func GetPeersOfNode(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("userId not found"))
 		return
 	}
-
-	for idx, node := range nodes {
+	var peers []models.Peer = []models.Peer{}
+	for _, node := range nodes {
 		if node.Id.Hex() == nodeId {
-			nodes = append(nodes[:idx], nodes[idx+1:]...)
-			break
+			continue
 		}
+		peers = append(peers, models.Peer{
+			Hostname:  node.Hostname,
+			PublicKey: node.PublicKey,
+			IPAddress: node.IPAddress,
+			Endpoint:  node.Endpoint,
+			NodeId:    node.Id.Hex(),
+		})
 	}
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(nodes)
+	json.NewEncoder(w).Encode(peers)
 }

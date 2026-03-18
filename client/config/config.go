@@ -1,6 +1,7 @@
 package config
 
 import (
+	"client/models"
 	"encoding/json"
 	"os"
 
@@ -23,6 +24,7 @@ var (
 		"stun4.l.google.com:19302",
 	}
 	ConfigObj Config
+	Peers     = make(map[string]models.Peer)
 )
 
 type Config struct {

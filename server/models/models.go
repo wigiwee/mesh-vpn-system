@@ -39,3 +39,11 @@ type RegisterNodeResponse struct {
 	IPAddress string `json:"ip_address" bson:"ip_address"`
 	NodeId    string `json:"node_id" bson:"node_id"`
 }
+
+type Peer struct {
+	Hostname  string `json:"hostname"`
+	PublicKey string `json:"public_key" bson:"public_key"`
+	IPAddress string `json:"ip_address" bson:"ip_address"`
+	Endpoint  string `json:"endpoint"`
+	NodeId    string `json:"node_id" bson:"node_id"`
+}

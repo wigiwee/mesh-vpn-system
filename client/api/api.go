@@ -38,7 +38,8 @@ func RegisterNode(registerReq models.RegisterNodeRequest) (models.RegisterNodeRe
 	return registerNodeRes, nil
 }
 
-func GetPeers(userId, nodeId string) ([]models.Node, error) {
+// TODO: modify this method at server and client to return []models.Peer struct as output insted of []models.Node
+func GetPeers(userId, nodeId string) ([]models.Peer, error) {
 
 	u, err := url.Parse(config.SERVER_URL + "/api/getNodePeers")
 	if err != nil {
@@ -57,10 +58,10 @@ func GetPeers(userId, nodeId string) ([]models.Node, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	var peers []models.Node
+	var peers []models.Peer
 	if err := json.NewDecoder(resp.Body).Decode(&peers); err != nil {
+		log.Println("decoding error")
 		return nil, err
 	}
-
 	return peers, nil
 }

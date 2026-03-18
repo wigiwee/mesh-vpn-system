@@ -64,6 +64,8 @@ func main() {
 
 	peers, err := api.GetPeers(config.ConfigObj.UserId, config.ConfigObj.NodeId)
 	if err != nil {
+		log.Println(peers)
+		log.Println(err)
 		log.Panic(err)
 	}
 	err = writeWGConfig(config.ConfigObj.PrivateKey, config.ConfigObj.NodeIPAddr, peers)

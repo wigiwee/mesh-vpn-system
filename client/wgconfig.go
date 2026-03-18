@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func writeWGConfig(privateKey string, selfIP string, peers []models.Node) error {
+func writeWGConfig(privateKey string, selfIP string, peers []models.Peer) error {
 
 	var sb strings.Builder
 	sb.WriteString("[interface]\n")
