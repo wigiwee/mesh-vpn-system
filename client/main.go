@@ -6,7 +6,6 @@ import (
 	"client/helper"
 	"client/models"
 	"crypto/rand"
-	"fmt"
 	"log"
 	"os"
 	"os/exec"
@@ -19,32 +18,37 @@ func main() {
 
 	// TODO: check auth first
 	config.ReadConfigFile()
+	log.Println("[DEBUG] read the config : ", config.ConfigObj)
 	if config.ConfigObj.UserId == "" {
+		log.Println("[INFO] user logged out, logging in the user")
 		//TODO: register/authenticate user
 		config.ConfigObj.UserId = "6893814a3b3b86cffb0eaea1"
+		log.Println("[INFO] user logged in")
 	}
 	if config.ConfigObj.NodeId == "" {
-		//TODO: register node
+		log.Println("[INFO] node not registered, registering the node with the server")
+
 		//fetching endpoint
 		endpoint, err := GetPublicEndpoint()
 		if err != nil {
-			log.Println("STUN failed: " + err.Error())
+			log.Println("[ERROR] STUN failed: " + err.Error())
 		}
 		config.ConfigObj.Endpoint = endpoint
 		//fetching hostname
 		hostname, err := os.Hostname()
 		if err != nil {
-			log.Println("error fetching hostname")
-			config.ConfigObj.Hostname = rand.Text()[:6] //assigning random hostname
+			log.Println("[ERROR] couldn't fetch hostname" + err.Error())
+			config.ConfigObj.Hostname = rand.Text()[:6]
 		} else {
 			config.ConfigObj.Hostname = hostname
 		}
 		//generating public private kyes
 		privateKey, err := wgtypes.GeneratePrivateKey()
 		if err != nil {
-			log.Panic(err)
+			log.Panic("[ERROR] can't generate public private keys ", err.Error())
 		}
 		config.ConfigObj.PrivateKey, config.ConfigObj.PublicKey = privateKey.String(), privateKey.PublicKey().String()
+
 		//registering node
 		registerNodeRes, err := api.RegisterNode(models.RegisterNodeRequest{
 			PublicKey: config.ConfigObj.PublicKey,
@@ -53,29 +57,21 @@ func main() {
 			UserId:    config.ConfigObj.UserId,
 			Hostname:  config.ConfigObj.Hostname,
 		})
-		fmt.Println(registerNodeRes)
 		if err != nil {
-			log.Panic(err)
+			log.Panic("[ERROR] error registering the node", err)
 		}
+		log.Println("[INFO] node registered with nodeID ", registerNodeRes.NodeId)
 		config.ConfigObj.NodeId = registerNodeRes.NodeId
 		config.ConfigObj.NodeIPAddr = registerNodeRes.IPAddress
 
-		//TODO: write the created configObj and write to file
 		config.WriteConfigFile()
+		log.Println("[INFO] config file written")
 	}
 
 	err := config.WriteWGConfig()
 	if err != nil {
-		log.Panic(err)
+		log.Printf("[ERROR] cannot write the %s.conf file %s", config.INTERFACE_NAME, err.Error())
 	}
-
-	// initialcmd := exec.Command("sudo", "wg-quick", "down", config.WG_CONFIG_FILE_LOCATION)
-	// initialcmd.Stdout = os.Stdout
-	// initialcmd.Stderr = os.Stderr
-	// err = initialcmd.Run()
-	// if err != nil {
-	// 	log.Printf("[ERROR]: %s\n", err)
-	// }
 
 	cmd := exec.Command("sudo", "wg-quick", "up", config.WG_CONFIG_FILE_LOCATION)
 	cmd.Stdout = os.Stdout
@@ -84,22 +80,27 @@ func main() {
 	if err != nil {
 		log.Printf("[ERROR]: %s\n", err)
 	}
-	log.Println("Brought up WireGuard interface ✅")
+	log.Println("[INFO] brought up the wireguard interaface " + config.INTERFACE_NAME + "✅")
 
 	//Daemon loop
 	for {
-		log.Println(config.Peers)
+		log.Println("[INFO] starting application loop ", config.Peers)
 		peers, err := api.GetPeers(config.ConfigObj.UserId, config.ConfigObj.NodeId)
 		if err != nil {
-			log.Panic(err)
+			log.Println("[ERROR] error fetching peers ", err.Error())
 		}
+		log.Println("[DEBUG] received peers ", peers)
 		added, removed := helper.SyncPeers(peers)
+		log.Println("[DEBUG] calcuated peer difference as added: ", added, " removed: ", removed)
 
+		log.Println("[INFO] syncing the peers")
 		for _, peer := range added {
 			config.AddPeer(peer)
+			config.Peers[peer.PublicKey] = peer
 		}
 		for _, peer := range removed {
 			config.RemovePeer(peer)
+			delete(config.Peers, peer.PublicKey)
 		}
 		time.Sleep(10 * time.Second)
 	}

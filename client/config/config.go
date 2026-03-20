@@ -3,13 +3,14 @@ package config
 import (
 	"client/models"
 	"encoding/json"
+	"log"
 	"os"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
 const (
-	WG_CONFIG_FILE_LOCATION  = CONFIG_DIR + "/" + "wg0.conf"
+	WG_CONFIG_FILE_LOCATION  = CONFIG_DIR + "/" + INTERFACE_NAME + ".conf"
 	SERVER_URL               = "http://localhost:4000"
 	CONFIG_DIR               = "local_files"
 	APP_CONFIG_FILE_LOCATION = CONFIG_DIR + "/" + "app.json"
@@ -60,12 +61,14 @@ func ReadConfigFile() error {
 	// ConfigObj.NodeIPAddr = "100.81.30.122"
 	configFile, err := os.OpenFile(APP_CONFIG_FILE_LOCATION, os.O_RDONLY|os.O_CREATE, 0644)
 	if err != nil {
+		log.Println("[ERROR] error opeing the config file ", APP_CONFIG_FILE_LOCATION)
 		return err
 	}
 
 	decoder := json.NewDecoder(configFile)
 	err = decoder.Decode(&ConfigObj)
 	if err != nil {
+		log.Println("[ERROR] error decoding the file to configObj")
 		return err
 	}
 	configFile.Close()

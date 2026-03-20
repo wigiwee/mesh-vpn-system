@@ -5,7 +5,6 @@ import (
 	"client/config"
 	"client/models"
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -19,10 +18,12 @@ func RegisterNode(registerReq models.RegisterNodeRequest) (models.RegisterNodeRe
 		return registerNodeRes, err
 	}
 	resp, err := http.Post(config.SERVER_URL+"/api/registerNode", "application/json", bytes.NewBuffer(data))
+	log.Println("[INFO] hitting url : " + config.SERVER_URL + "/api/registerNode")
 	if err != nil {
 		return registerNodeRes, err
 	}
 	defer resp.Body.Close()
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return registerNodeRes, err
@@ -31,14 +32,11 @@ func RegisterNode(registerReq models.RegisterNodeRequest) (models.RegisterNodeRe
 	if err != nil {
 		return registerNodeRes, err
 	}
-	log.Println("register node server response : " + registerNodeRes.NodeId + " " + registerNodeRes.IPAddress)
-	// if resp.Status == strconv.Itoa(http.StatusOK) {
-	// 	return models.RegisterNodeResponse{}, fmt.Errorf("%s", string(body))
-	// }
+	log.Println("[DEBUG] register node server response : " + registerNodeRes.NodeId + " " + registerNodeRes.IPAddress)
+
 	return registerNodeRes, nil
 }
 
-// TODO: modify this method at server and client to return []models.Peer struct as output insted of []models.Node
 func GetPeers(userId, nodeId string) ([]models.Peer, error) {
 
 	u, err := url.Parse(config.SERVER_URL + "/api/getNodePeers")
@@ -50,9 +48,8 @@ func GetPeers(userId, nodeId string) ([]models.Peer, error) {
 	q.Set("user_id", userId)
 	q.Set("node_id", nodeId)
 	u.RawQuery = q.Encode()
-	fmt.Println(u)
 
-	log.Println("hitting url : " + u.String())
+	log.Println("[INFO] hitting url : " + u.String())
 	resp, err := http.Get(u.String())
 	if err != nil {
 		return nil, err
@@ -60,7 +57,7 @@ func GetPeers(userId, nodeId string) ([]models.Peer, error) {
 	defer resp.Body.Close()
 	var peers []models.Peer
 	if err := json.NewDecoder(resp.Body).Decode(&peers); err != nil {
-		log.Println("decoding error")
+		log.Println("[ERROR] error decoding response body ", err.Error())
 		return nil, err
 	}
 	return peers, nil
