@@ -11,21 +11,6 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func RegisterUser(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	var registerUserReq models.RegisterUserRequest
-	json.NewDecoder(r.Body).Decode(&registerUserReq)
-	userId, err := services.AddUser(registerUserReq)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
-	}
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(userId)
-}
-
 func RegisterNode(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -87,13 +72,38 @@ func GetPeersOfNode(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		peers = append(peers, models.Peer{
-			Hostname:  node.Hostname,
-			PublicKey: node.PublicKey,
-			IPAddress: node.IPAddress,
-			Endpoint:  node.Endpoint,
-			NodeId:    node.Id.Hex(),
+			Hostname:   node.Hostname,
+			PublicKey:  node.PublicKey,
+			IPAddress:  node.IPAddress,
+			Endpoint:   node.Endpoint,
+			NodeId:     node.Id.Hex(),
+			ICEUfrag:   node.ICEUfrag,
+			ICEPwd:     node.ICEPwd,
+			Candidates: node.Candidates,
 		})
 	}
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(peers)
+}
+
+func UpdatePeer(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+}
+
+func UpdatePeersICECreds(w http.ResponseWriter, r *http.Request) {
+	log.Println("got a update credentials request")
+	w.Header().Set("Content-Type", "application/json")
+
+	var iceCredsUpdateReq models.ICECredsUpdateRequest
+	json.NewDecoder(r.Body).Decode(&iceCredsUpdateReq)
+	log.Println("got the request object", iceCredsUpdateReq)
+	err := services.UpdateICECreds(iceCredsUpdateReq)
+	if err != nil {
+		log.Print("error updating the nodes ice creds", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("error updating the nodes ice creds" + err.Error()))
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("OK"))
 }

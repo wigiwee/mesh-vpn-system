@@ -13,34 +13,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func AddUser(registerUserReq models.RegisterUserRequest) (string, error) {
-
-	user := &models.User{
-		Name:       registerUserReq.Name,
-		Username:   registerUserReq.Username,
-		Password:   registerUserReq.Password,
-		NodesLimit: 100,
-	}
-	filter := bson.M{"username": registerUserReq.Username}
-	cursor, err := db.UsersColl.Find(context.TODO(), filter)
-	if err != nil {
-		return "", err
-	}
-	var users []models.User
-	cursor.All(context.TODO(), &users)
-	if len(users) > 0 {
-		return "", errors.New("user with provided userId exists")
-	}
-	ack, err := db.UsersColl.InsertOne(context.TODO(), user)
-	if err != nil {
-		return "nil", err
-	}
-	newUserId := ack.InsertedID.(primitive.ObjectID)
-
-	log.Printf("added new user: %s -> %s \n", registerUserReq.Username, newUserId.Hex())
-	return newUserId.Hex(), nil
-}
-
 func AddNode(newNodeReq models.RegisterNodeRequest) (models.RegisterNodeResponse, error) {
 	log.Println("addnode method executing started")
 	userPrimitiveId, err := primitive.ObjectIDFromHex(newNodeReq.UserId)
@@ -112,4 +84,39 @@ func FetchUserNodes(userId string) ([]models.Node, error) {
 		nodes = append(nodes, node)
 	}
 	return nodes, nil
+}
+
+func UpdateICECreds(iceCredsUpdateRequest models.ICECredsUpdateRequest) error {
+	filter := bson.M{"_id": iceCredsUpdateRequest.Id}
+	update := bson.M{
+		"$set": bson.M{
+			"ice_ufrag":  iceCredsUpdateRequest.ICEUfrag,
+			"ice_pwd":    iceCredsUpdateRequest.ICEPwd,
+			"candidates": iceCredsUpdateRequest.Candidates,
+		},
+	}
+	_, err := db.NodesColl.UpdateOne(context.Background(), filter, update)
+	if err != nil {
+		log.Println("error updating the ice credentials ", err.Error())
+		return err
+	}
+	return nil
+}
+
+func UpdateNode(updateReq models.UpdateNodeRequest) error {
+	filter := bson.M{"_id": updateReq.Id}
+	update := bson.M{
+		"$set": bson.M{
+			"public_key": updateReq.PublicKey,
+			"ip_address": updateReq.IPAddress,
+			"endpoint":   updateReq.Endpoint,
+			"hostname":   updateReq.Hostname,
+		},
+	}
+	_, err := db.NodesColl.UpdateOne(context.Background(), filter, update)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

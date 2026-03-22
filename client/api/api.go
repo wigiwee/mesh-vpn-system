@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strconv"
 )
 
 func RegisterNode(registerReq models.RegisterNodeRequest) (models.RegisterNodeResponse, error) {
@@ -61,4 +62,35 @@ func GetPeers(userId, nodeId string) ([]models.Peer, error) {
 		return nil, err
 	}
 	return peers, nil
+}
+
+func UpdateIceCreds(iceUpdateReq models.ICECredsUpdateRequest) error {
+	data, err := json.Marshal(iceUpdateReq)
+	if err != nil {
+		log.Println("[ERROR] error encoding the request object ", err.Error())
+		return err
+	}
+	req, err := http.NewRequest(http.MethodPut, config.SERVER_URL+"/api/updateNodeIceCreds", bytes.NewBuffer(data))
+	log.Println("hitting req ", req.URL.String())
+
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Println("[ERROR] error updating the ice creds ", err.Error())
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		body, _ := io.ReadAll(resp.Body)
+		log.Println("[ERROR] something went wrong received status code " + strconv.Itoa(resp.StatusCode) + "body " + string(body))
+		return err
+	}
+
+	return nil
 }

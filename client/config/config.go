@@ -27,6 +27,10 @@ var (
 	}
 	ConfigObj Config
 	Peers     = make(map[string]models.Peer)
+
+	ICEUfrag   string
+	ICEPwd     string
+	Candidates []string
 )
 
 type Config struct {

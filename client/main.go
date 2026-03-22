@@ -11,9 +11,11 @@ import (
 	"os/exec"
 	"time"
 
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
+// TODO: change all the id fields type string->primitive.ObjectId
 func main() {
 
 	// TODO: check auth first
@@ -68,7 +70,28 @@ func main() {
 		log.Println("[INFO] config file written")
 	}
 
-	err := config.WriteWGConfig()
+	agent := StartICE()
+
+	config.ICEUfrag, config.ICEPwd, _ = agent.GetLocalUserCredentials()
+	log.Println("[DEBUG] got credentials as ", config.ICEUfrag, config.ICEPwd)
+
+	id, err := primitive.ObjectIDFromHex(config.ConfigObj.NodeId)
+	if err != nil {
+		log.Panic("invalid node id ", config.ConfigObj.NodeId)
+	}
+
+	// TODO: implement channel here instead of just waiting for n seconds
+	time.Sleep(3 * time.Second)
+	log.Println("candidates ", config.Candidates)
+	api.UpdateIceCreds(models.ICECredsUpdateRequest{
+		Id:         id,
+		ICEUfrag:   config.ICEUfrag,
+		ICEPwd:     config.ICEPwd,
+		Candidates: config.Candidates,
+	})
+	log.Println("[INFO] updated the ice creds to the server")
+
+	err = config.WriteWGConfig()
 	if err != nil {
 		log.Printf("[ERROR] cannot write the %s.conf file %s", config.INTERFACE_NAME, err.Error())
 	}
@@ -84,6 +107,7 @@ func main() {
 
 	//Daemon loop
 	for {
+
 		log.Println("[INFO] starting application loop ", config.Peers)
 		peers, err := api.GetPeers(config.ConfigObj.UserId, config.ConfigObj.NodeId)
 		if err != nil {
@@ -95,6 +119,7 @@ func main() {
 
 		log.Println("[INFO] syncing the peers")
 		for _, peer := range added {
+			agent.SetRemoteCredentials(peer.ICEUfrag, peer.ICEPwd)
 			config.AddPeer(peer)
 			config.Peers[peer.PublicKey] = peer
 		}
