@@ -26,11 +26,7 @@ var (
 		"stun4.l.google.com:19302",
 	}
 	ConfigObj Config
-	Peers     = make(map[string]models.Peer)
-
-	ICEUfrag   string
-	ICEPwd     string
-	Candidates []string
+	PeerState = make(map[string]models.PeerState)
 )
 
 type Config struct {

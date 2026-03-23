@@ -86,23 +86,6 @@ func FetchUserNodes(userId string) ([]models.Node, error) {
 	return nodes, nil
 }
 
-func UpdateICECreds(iceCredsUpdateRequest models.ICECredsUpdateRequest) error {
-	filter := bson.M{"_id": iceCredsUpdateRequest.Id}
-	update := bson.M{
-		"$set": bson.M{
-			"ice_ufrag":  iceCredsUpdateRequest.ICEUfrag,
-			"ice_pwd":    iceCredsUpdateRequest.ICEPwd,
-			"candidates": iceCredsUpdateRequest.Candidates,
-		},
-	}
-	_, err := db.NodesColl.UpdateOne(context.Background(), filter, update)
-	if err != nil {
-		log.Println("error updating the ice credentials ", err.Error())
-		return err
-	}
-	return nil
-}
-
 func UpdateNode(updateReq models.UpdateNodeRequest) error {
 	filter := bson.M{"_id": updateReq.Id}
 	update := bson.M{

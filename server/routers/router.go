@@ -18,7 +18,8 @@ func Router() *mux.Router {
 	r.HandleFunc("/api/getUserPeers", controllers.GetPeersOfUser).Methods("GET")
 	r.HandleFunc("/api/getNodePeers", controllers.GetPeersOfNode).Methods("GET")
 	r.HandleFunc("/api/updateNode", controllers.UpdatePeer).Methods("PUT")
-	r.HandleFunc("/api/updateNodeIceCreds", controllers.UpdatePeersICECreds).Methods("PUT")
+	r.HandleFunc("/api/registerCreds", controllers.RegisterICECreds).Methods("POST")
+	r.HandleFunc("/api/fetchCreds", controllers.FetchICECreds).Methods("GET")
 	// r.HandleFunc("/api/registerUser", RegisterUser())
 	// r.HandleFunc("/api/registerUser", RegisterUser())
 

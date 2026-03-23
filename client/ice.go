@@ -1,25 +1,11 @@
 package main
 
 import (
-	"client/config"
 	"log"
 
 	"github.com/pion/ice/v2"
 	"github.com/pion/stun"
 )
-
-func StartICE() *ice.Agent {
-
-	agent := GetAgent()
-
-	err := agent.GatherCandidates()
-	if err != nil {
-		log.Panic(err)
-	}
-	log.Println("ice gathering started")
-
-	return agent
-}
 
 func GetAgent() *ice.Agent {
 
@@ -44,13 +30,7 @@ func GetAgent() *ice.Agent {
 	agent.OnConnectionStateChange(func(state ice.ConnectionState) {
 		log.Println("[INFO] ICE stagechange to " + state.String())
 	})
-	agent.OnCandidate(func(c ice.Candidate) {
-		if c == nil {
-			return
-		}
-		log.Println("[INFO] found candidate " + c.String())
-		config.Candidates = append(config.Candidates, c.String())
-	})
+
 	return agent
 
 }

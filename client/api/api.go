@@ -5,6 +5,7 @@ import (
 	"client/config"
 	"client/models"
 	"encoding/json"
+	"errors"
 	"io"
 	"log"
 	"net/http"
@@ -64,33 +65,56 @@ func GetPeers(userId, nodeId string) ([]models.Peer, error) {
 	return peers, nil
 }
 
-func UpdateIceCreds(iceUpdateReq models.ICECredsUpdateRequest) error {
-	data, err := json.Marshal(iceUpdateReq)
+func RegisterIceCreds(iceCredsRegisterRequest models.ICECredsRegisterRequest) error {
+	data, err := json.Marshal(iceCredsRegisterRequest)
 	if err != nil {
-		log.Println("[ERROR] error encoding the request object ", err.Error())
+		log.Println("error encoding the iceCredsRegisterRequest")
 		return err
 	}
-	req, err := http.NewRequest(http.MethodPut, config.SERVER_URL+"/api/updateNodeIceCreds", bytes.NewBuffer(data))
-	log.Println("hitting req ", req.URL.String())
-
+	resp, err := http.Post(config.SERVER_URL+"/api/registerCreds", "application/json", bytes.NewBuffer(data))
+	log.Println("[INFO] hitting url " + config.SERVER_URL + "/api/registerCreds")
 	if err != nil {
+		log.Println("error register the creds")
 		return err
 	}
-	req.Header.Set("Content-Type", "application/json")
+	resp.Body.Close()
+	if resp.StatusCode != 200 {
+		log.Println("got status code ", resp.StatusCode)
+		return errors.New("got status code " + strconv.Itoa(resp.StatusCode))
+	}
+	return nil
+}
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+func FetchIceCreds(iceCredsFetchRequest models.ICECredsFetchRequest) (models.ICECreds, error) {
+	var iceCreds models.ICECreds
+
+	u, err := url.Parse(config.SERVER_URL + "/api/fetchCreds")
 	if err != nil {
-		log.Println("[ERROR] error updating the ice creds ", err.Error())
-		return err
+		return iceCreds, err
+	}
+	u.Scheme = "http"
+	q := u.Query()
+	q.Set("local_node_id", iceCredsFetchRequest.LocalNodeId)
+	q.Set("remote_node_id", iceCredsFetchRequest.RemoteNodeId)
+	q.Set("user_id", iceCredsFetchRequest.UserId)
+	u.RawQuery = q.Encode()
+
+	log.Println("hitting url " + u.String())
+
+	resp, err := http.Get(u.String())
+	if err != nil {
+		log.Println("error fetching the ice creds")
+		return iceCreds, err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode >= 400 {
-		body, _ := io.ReadAll(resp.Body)
-		log.Println("[ERROR] something went wrong received status code " + strconv.Itoa(resp.StatusCode) + "body " + string(body))
-		return err
+	if err := json.NewDecoder(resp.Body).Decode(&iceCreds); err != nil {
+		log.Println("error decoding the response object into iceCreds obj")
+		return iceCreds, err
+	}
+	if resp.StatusCode == 404 {
+		return iceCreds, errors.New("ice agent at the peer not started yet")
 	}
 
-	return nil
+	return iceCreds, nil
 }

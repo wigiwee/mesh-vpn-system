@@ -5,13 +5,16 @@ import (
 	"client/config"
 	"client/helper"
 	"client/models"
+	"context"
 	"crypto/rand"
+	"fmt"
 	"log"
+	"net"
 	"os"
 	"os/exec"
 	"time"
 
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"github.com/pion/ice/v2"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
@@ -70,28 +73,7 @@ func main() {
 		log.Println("[INFO] config file written")
 	}
 
-	agent := StartICE()
-
-	config.ICEUfrag, config.ICEPwd, _ = agent.GetLocalUserCredentials()
-	log.Println("[DEBUG] got credentials as ", config.ICEUfrag, config.ICEPwd)
-
-	id, err := primitive.ObjectIDFromHex(config.ConfigObj.NodeId)
-	if err != nil {
-		log.Panic("invalid node id ", config.ConfigObj.NodeId)
-	}
-
-	// TODO: implement channel here instead of just waiting for n seconds
-	time.Sleep(3 * time.Second)
-	log.Println("candidates ", config.Candidates)
-	api.UpdateIceCreds(models.ICECredsUpdateRequest{
-		Id:         id,
-		ICEUfrag:   config.ICEUfrag,
-		ICEPwd:     config.ICEPwd,
-		Candidates: config.Candidates,
-	})
-	log.Println("[INFO] updated the ice creds to the server")
-
-	err = config.WriteWGConfig()
+	err := config.WriteWGConfig()
 	if err != nil {
 		log.Printf("[ERROR] cannot write the %s.conf file %s", config.INTERFACE_NAME, err.Error())
 	}
@@ -108,24 +90,82 @@ func main() {
 	//Daemon loop
 	for {
 
-		log.Println("[INFO] starting application loop ", config.Peers)
+		//fetching node peers
+		log.Println("[INFO] starting application loop ", config.PeerState)
 		peers, err := api.GetPeers(config.ConfigObj.UserId, config.ConfigObj.NodeId)
 		if err != nil {
 			log.Println("[ERROR] error fetching peers ", err.Error())
 		}
 		log.Println("[DEBUG] received peers ", peers)
+
+		//comparing newly fetched peers
 		added, removed := helper.SyncPeers(peers)
 		log.Println("[DEBUG] calcuated peer difference as added: ", added, " removed: ", removed)
 
 		log.Println("[INFO] syncing the peers")
 		for _, peer := range added {
-			agent.SetRemoteCredentials(peer.ICEUfrag, peer.ICEPwd)
+			//this is where we generate the agent and establish the connection
+			agent := GetAgent()
+			id, pwd, _ := agent.GetLocalUserCredentials()
+			candidates := []string{}
+			agent.OnCandidate(func(c ice.Candidate) {
+				if c == nil {
+					return
+				}
+				log.Println("[INFO] found candidate " + c.String())
+				candidates = append(candidates, c.String())
+			})
+			agent.GatherCandidates()
+			time.Sleep(2 * time.Second)
+
+			api.RegisterIceCreds(models.ICECredsRegisterRequest{
+				LocalNodeId:  config.ConfigObj.NodeId,
+				RemoteNodeId: peer.NodeId,
+				UserId:       config.ConfigObj.UserId,
+				ICECreds: models.ICECreds{
+					ICEUfrag:   id,
+					ICEPwd:     pwd,
+					Candidates: candidates,
+				},
+			})
+
+			remoteCreds, err := api.FetchIceCreds(models.ICECredsFetchRequest{
+				LocalNodeId:  peer.NodeId,
+				RemoteNodeId: config.ConfigObj.NodeId,
+				UserId:       config.ConfigObj.UserId,
+			})
+			if err != nil {
+
+			}
+			agent.SetRemoteCredentials(id, pwd)
+			for _, candidate := range remoteCreds.Candidates {
+				candidate, err := ice.UnmarshalCandidate(candidate)
+				if err != nil {
+					fmt.Println("error decoding the candidate ", candidate, err)
+				}
+				agent.AddRemoteCandidate(candidate)
+			}
+			var conn net.Conn
+			if config.ConfigObj.NodeId > peer.NodeId {
+				conn, _ = agent.Dial(context.Background(), id, pwd)
+			} else {
+				conn, _ = agent.Accept(context.Background(), id, pwd)
+			}
+
 			config.AddPeer(peer)
-			config.Peers[peer.PublicKey] = peer
+			config.PeerState[peer.PublicKey] = models.PeerState{
+				Peer:       peer,
+				Agent:      agent,
+				Conn:       &conn,
+				LocalUFrag: id,
+				LocalPwd:   pwd,
+				Connected:  true,
+			}
 		}
+
 		for _, peer := range removed {
 			config.RemovePeer(peer)
-			delete(config.Peers, peer.PublicKey)
+			delete(config.PeerState, peer.PublicKey)
 		}
 		time.Sleep(10 * time.Second)
 	}

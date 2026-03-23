@@ -10,12 +10,13 @@ func SyncPeers(newPeers []models.Peer) ([]models.Peer, []models.Peer) {
 	removed := []models.Peer{}
 
 	for _, peer := range newPeers {
-		_, ok := config.Peers[peer.PublicKey]
+		_, ok := config.PeerState[peer.PublicKey]
 		if ok == false {
 			added = append(added, peer)
 		}
 	}
-	for existingPeerPublicKey, existingPeer := range config.Peers {
+
+	for existingPeerPublicKey, existingPeerState := range config.PeerState {
 		doesExist := false
 		for _, newPeer := range newPeers {
 			if newPeer.PublicKey == existingPeerPublicKey {
@@ -24,7 +25,7 @@ func SyncPeers(newPeers []models.Peer) ([]models.Peer, []models.Peer) {
 			}
 		}
 		if doesExist == false {
-			removed = append(removed, existingPeer)
+			removed = append(removed, existingPeerState.Peer)
 		}
 
 	}

@@ -19,6 +19,7 @@ func WriteWGConfig() error {
 	return os.WriteFile(WG_CONFIG_FILE_LOCATION, []byte(sb.String()), 0600)
 }
 
+// TODO: revise this method, use ice endpoint
 func AddPeer(p models.Peer) error {
 	exec.Command("wg", "set", INTERFACE_NAME,
 		"peer", p.PublicKey,
