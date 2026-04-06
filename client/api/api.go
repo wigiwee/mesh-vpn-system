@@ -6,10 +6,10 @@ import (
 	"client/models"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
-	"net/url"
 	"strconv"
 )
 
@@ -19,8 +19,8 @@ func RegisterNode(registerReq models.RegisterNodeRequest) (models.RegisterNodeRe
 	if err != nil {
 		return registerNodeRes, err
 	}
-	resp, err := http.Post(config.SERVER_URL+"/api/registerNode", "application/json", bytes.NewBuffer(data))
-	log.Println("[INFO] hitting url : " + config.SERVER_URL + "/api/registerNode")
+	resp, err := http.Post(config.SERVER_URL+"/api/node", "application/json", bytes.NewBuffer(data))
+	log.Println("[INFO] hitting url : " + config.SERVER_URL + "/api/node")
 	if err != nil {
 		return registerNodeRes, err
 	}
@@ -41,18 +41,9 @@ func RegisterNode(registerReq models.RegisterNodeRequest) (models.RegisterNodeRe
 
 func GetPeers(userId, nodeId string) ([]models.Peer, error) {
 
-	u, err := url.Parse(config.SERVER_URL + "/api/getNodePeers")
-	if err != nil {
-		log.Fatal(err)
-	}
-	u.Scheme = "http"
-	q := u.Query()
-	q.Set("user_id", userId)
-	q.Set("node_id", nodeId)
-	u.RawQuery = q.Encode()
-
-	log.Println("[INFO] hitting url : " + u.String())
-	resp, err := http.Get(u.String())
+	url := config.SERVER_URL + fmt.Sprintf("/api/peer/%s/%s", userId, nodeId)
+	log.Println("[INFO] hitting url : " + url)
+	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err
 	}
@@ -65,56 +56,51 @@ func GetPeers(userId, nodeId string) ([]models.Peer, error) {
 	return peers, nil
 }
 
-func RegisterIceCreds(iceCredsRegisterRequest models.ICECredsRegisterRequest) error {
-	data, err := json.Marshal(iceCredsRegisterRequest)
+func RegisterIceCreds(ConnectionIdentifier models.ConnectionIdentifier, iceCreds models.ICECreds) error {
+	data, err := json.Marshal(models.RegisterCredentialsRequest{
+		ConnectionIdentifier: ConnectionIdentifier,
+		ICECreds:             iceCreds,
+	})
 	if err != nil {
-		log.Println("error encoding the iceCredsRegisterRequest")
+		log.Println("[ERROR] error encoding the iceCredsRegisterRequest")
 		return err
 	}
-	resp, err := http.Post(config.SERVER_URL+"/api/registerCreds", "application/json", bytes.NewBuffer(data))
-	log.Println("[INFO] hitting url " + config.SERVER_URL + "/api/registerCreds")
+
+	resp, err := http.Post(fmt.Sprintf("%s/api/ice/candidate", config.SERVER_URL), "application/json", bytes.NewBuffer(data))
+	log.Println("[INFO] hitting url " + fmt.Sprintf("%s/api/ice/candidate", config.SERVER_URL))
 	if err != nil {
-		log.Println("error register the creds")
+		log.Println("[ERROR] error register the creds")
 		return err
 	}
 	resp.Body.Close()
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusCreated {
 		log.Println("got status code ", resp.StatusCode)
 		return errors.New("got status code " + strconv.Itoa(resp.StatusCode))
 	}
 	return nil
 }
 
-func FetchIceCreds(iceCredsFetchRequest models.ICECredsFetchRequest) (models.ICECreds, error) {
+func FetchIceCreds(connectionIdentifier models.ConnectionIdentifier) (models.ICECreds, error) {
 	var iceCreds models.ICECreds
 
-	u, err := url.Parse(config.SERVER_URL + "/api/fetchCreds")
+	resp, err := http.Get(fmt.Sprintf("%s/api/ice/candidate/%s/%s/%s",
+		config.SERVER_URL,
+		connectionIdentifier.UserId,
+		connectionIdentifier.LocalNodeId,
+		connectionIdentifier.RemoteNodeId))
+	log.Println("[INFO] hitting url to fetch ice creds")
 	if err != nil {
-		return iceCreds, err
-	}
-	u.Scheme = "http"
-	q := u.Query()
-	q.Set("local_node_id", iceCredsFetchRequest.LocalNodeId)
-	q.Set("remote_node_id", iceCredsFetchRequest.RemoteNodeId)
-	q.Set("user_id", iceCredsFetchRequest.UserId)
-	u.RawQuery = q.Encode()
-
-	log.Println("hitting url " + u.String())
-
-	resp, err := http.Get(u.String())
-	if err != nil {
-		log.Println("error fetching the ice creds")
+		log.Println("[ERROR] error fetching the ice creds")
 		return iceCreds, err
 	}
 	defer resp.Body.Close()
 
 	if err := json.NewDecoder(resp.Body).Decode(&iceCreds); err != nil {
-		log.Println("error decoding the response object into iceCreds obj")
+		log.Println("[ERROR] error decoding the response object into iceCreds obj")
 		return iceCreds, err
 	}
-	if resp.StatusCode == 404 {
-		return iceCreds, errors.New("ice agent at the peer not started yet")
+	if resp.StatusCode != http.StatusOK {
+		return iceCreds, errors.New("[ERROR] ice agent at the peer not started yet")
 	}
-
 	return iceCreds, nil
 }
