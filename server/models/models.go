@@ -11,13 +11,6 @@ type Node struct {
 	Device     string             `json:"device" bson:"device"`
 	Hostname   string             `json:"hostname" bson:"hostname"`
 }
-type ICECredsRegisterRequest struct {
-	LocalNodeId  string `json:"local_node_id"`
-	RemoteNodeId string `json:"remote_node_id"`
-	UserId       string `json:"user_id"`
-
-	ICECreds ICECreds `json:"ice_creds"`
-}
 
 type UpdateNodeRequest struct {
 	Id        primitive.ObjectID `json:"id" bson:"_id,omitempty"`
@@ -63,8 +56,23 @@ type Peer struct {
 	NodeId    string `json:"node_id" bson:"node_id"`
 }
 
+type RegisterCandidateRequest struct {
+	ConnectionIdentifier ConnectionIdentifier `json:"connection_identifier" bson:"connection_identifier"`
+	Candidate            string               `json:"candidate" bson:"candidate"`
+}
+
+type ConnectionIdentifier struct {
+	LocalNodeId  string `json:"local_node_id" bson:"local_node_id"`
+	RemoteNodeId string `json:"remote_node_id" bson:"remote_node_id"`
+	UserId       string `json:"user_id" bson:"user_id"`
+}
+
 type ICECreds struct {
-	ICEUfrag   string   `json:"ice_ufrag" bson:"ice_ufrag"`
-	ICEPwd     string   `json:"ice_pwd" bson:"ice_pwd"`
-	Candidates []string `json:"candidates" bson:"candidates"`
+	ICEUfrag string `json:"ice_ufrag" bson:"ice_ufrag"`
+	ICEPwd   string `json:"ice_pwd" bson:"ice_pwd"`
+}
+
+type RegisterCredentialsRequest struct {
+	ConnectionIdentifier ConnectionIdentifier `json:"connection_identifier" bson:"connection_identifier"`
+	ICECreds             ICECreds             `json:"ice_creds" bson:"ice_creds"`
 }

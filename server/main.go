@@ -3,13 +3,15 @@ package main
 import (
 	"log"
 	"net/http"
+	"server/config"
 	"server/routers"
+	"strconv"
 )
 
 func main() {
 
 	r := routers.Router()
-	log.Println("server started")
-	log.Fatal(http.ListenAndServe(":4000", r))
-	log.Println("listening at 4000")
+	log.Println("[INFO] starting the server")
+	log.Fatal(http.ListenAndServe(":"+strconv.Itoa(config.Port), r))
+	log.Println("listening at ", strconv.Itoa(config.Port))
 }

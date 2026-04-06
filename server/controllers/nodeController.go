@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"server/config"
 	"server/models"
 	"server/services"
 
@@ -45,11 +44,11 @@ func GetPeersOfUser(w http.ResponseWriter, r *http.Request) {
 func GetPeersOfNode(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	fmt.Println(r.URL.String())
-	query := r.URL.Query()
-	log.Println("received node_id" + query.Get("node_id"))
-	log.Println("received user_id" + query.Get("user_id"))
-	nodeId := query.Get("node_id")
-	userId := query.Get("user_id")
+	pathVars := mux.Vars(r)
+	log.Println("received node_id" + pathVars["node_id"])
+	log.Println("received user_id" + pathVars["user_id"])
+	nodeId := pathVars["node_id"]
+	userId := pathVars["user_id"]
 	nodes, err := services.FetchUserNodes(userId)
 	if err != nil {
 		log.Println(err)
@@ -84,48 +83,4 @@ func GetPeersOfNode(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(peers)
-}
-
-func UpdatePeer(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-}
-
-func RegisterICECreds(w http.ResponseWriter, r *http.Request) {
-	log.Println("got a update credentials request")
-	w.Header().Set("Content-Type", "application/json")
-
-	var iceCredsRegisterReq models.ICECredsRegisterRequest
-	json.NewDecoder(r.Body).Decode(&iceCredsRegisterReq)
-	log.Println("got the request object", iceCredsRegisterReq)
-
-	_, doesExist := config.InMemoryCredentials[iceCredsRegisterReq.UserId+iceCredsRegisterReq.LocalNodeId+iceCredsRegisterReq.RemoteNodeId]
-	if doesExist {
-		config.InMemoryCredentials[iceCredsRegisterReq.UserId+iceCredsRegisterReq.LocalNodeId+iceCredsRegisterReq.RemoteNodeId] = iceCredsRegisterReq.ICECreds
-	}
-	log.Println("successfully registered the creds in the memorydb")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("OK"))
-}
-
-func FetchICECreds(w http.ResponseWriter, r *http.Request) {
-	log.Println("got a fetch icecreds req")
-	w.Header().Set("Content-Type", "application/json")
-
-	query := r.URL.Query()
-	log.Println("received local_node_id", query.Get("local_node_id"))
-	log.Println("received remote_node_id", query.Get("remote_node_id"))
-	log.Println("received user_Id", query.Get("user_id"))
-	localNodeId := query.Get("local_node_id")
-	remoteNodeId := query.Get("remote_node_id")
-	userId := query.Get("user_id")
-
-	creds, doesExist := config.InMemoryCredentials[userId+localNodeId+remoteNodeId]
-	if doesExist == false {
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte("no credentials found"))
-		return
-	}
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(creds)
 }
