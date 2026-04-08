@@ -13,6 +13,7 @@ func RegisterIceCandidate(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	var candidateRegisterReq models.RegisterCandidateRequest
 	json.NewDecoder(r.Body).Decode(&candidateRegisterReq)
+	//TODO: check if the candidate already exists, if does then skip adding
 	config.InMemoryCandidates[candidateRegisterReq.ConnectionIdentifier] =
 		append(config.InMemoryCandidates[candidateRegisterReq.ConnectionIdentifier], candidateRegisterReq.Candidate)
 
@@ -49,11 +50,16 @@ func GetCredentials(w http.ResponseWriter, r *http.Request) {
 
 	pathVars := mux.Vars(r)
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(config.InMemoryCredentials[models.ConnectionIdentifier{
+	creds, doesExist := config.InMemoryCredentials[models.ConnectionIdentifier{
 		LocalNodeId:  pathVars["local_node_id"],
 		RemoteNodeId: pathVars["remote_node_id"],
 		UserId:       pathVars["user_id"],
-	}])
+	}]
+	if !doesExist {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(creds)
 
 }

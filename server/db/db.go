@@ -25,11 +25,11 @@ func init() {
 	}
 
 	if err := client.Ping(context.Background(), nil); err != nil {
-		log.Fatal("Ping failed:", err)
+		log.Fatal("[ERROR] mongodb Ping failed:", err)
 	} else {
-		log.Println("ping successful")
+		log.Println("[INFO] mongodb ping successful")
 	}
-	log.Println("Mongodb connected")
+	log.Println("[INFO] Mongodb connected")
 
 	NodesColl = client.Database(dbName).Collection(nodes)
 	UsersColl = client.Database(dbName).Collection(users)

@@ -77,7 +77,6 @@ func GetPeersOfNode(w http.ResponseWriter, r *http.Request) {
 			Hostname:  node.Hostname,
 			PublicKey: node.PublicKey,
 			IPAddress: node.IPAddress,
-			Endpoint:  node.Endpoint,
 			NodeId:    node.Id.Hex(),
 		})
 	}
