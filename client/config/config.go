@@ -26,7 +26,7 @@ var (
 		"stun4.l.google.com:19302",
 	}
 	ConfigObj Config
-	PeerState = make(map[string]models.PeerState)
+	PeerState = make(map[models.ConnectionIdentifier]models.PeerState)
 )
 
 type Config struct {
@@ -56,9 +56,6 @@ func WriteConfigFile() error {
 }
 
 func ReadConfigFile() error {
-	//for now statically assigning user id
-	// ConfigObj.UserId = "6893814a3b3b86cffb0eaea1"
-	// ConfigObj.NodeIPAddr = "100.81.30.122"
 	configFile, err := os.OpenFile(APP_CONFIG_FILE_LOCATION, os.O_RDONLY|os.O_CREATE, 0644)
 	if err != nil {
 		log.Println("[ERROR] error opeing the config file ", APP_CONFIG_FILE_LOCATION)

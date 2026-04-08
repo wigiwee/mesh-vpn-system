@@ -65,9 +65,9 @@ func RegisterIceCreds(ConnectionIdentifier models.ConnectionIdentifier, iceCreds
 		log.Println("[ERROR] error encoding the iceCredsRegisterRequest")
 		return err
 	}
-
-	resp, err := http.Post(fmt.Sprintf("%s/api/ice/candidate", config.SERVER_URL), "application/json", bytes.NewBuffer(data))
-	log.Println("[INFO] hitting url " + fmt.Sprintf("%s/api/ice/candidate", config.SERVER_URL))
+	url := fmt.Sprintf("%s/api/ice/credentials", config.SERVER_URL)
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(data))
+	log.Println("[INFO] hitting url " + url)
 	if err != nil {
 		log.Println("[ERROR] error register the creds")
 		return err
@@ -80,10 +80,10 @@ func RegisterIceCreds(ConnectionIdentifier models.ConnectionIdentifier, iceCreds
 	return nil
 }
 
-func FetchIceCreds(connectionIdentifier models.ConnectionIdentifier) (models.ICECreds, error) {
+func GetIceCredentials(connectionIdentifier models.ConnectionIdentifier) (models.ICECreds, error) {
 	var iceCreds models.ICECreds
 
-	resp, err := http.Get(fmt.Sprintf("%s/api/ice/candidate/%s/%s/%s",
+	resp, err := http.Get(fmt.Sprintf("%s/api/ice/credentials/%s/%s/%s",
 		config.SERVER_URL,
 		connectionIdentifier.UserId,
 		connectionIdentifier.LocalNodeId,
@@ -95,12 +95,50 @@ func FetchIceCreds(connectionIdentifier models.ConnectionIdentifier) (models.ICE
 	}
 	defer resp.Body.Close()
 
-	if err := json.NewDecoder(resp.Body).Decode(&iceCreds); err != nil {
-		log.Println("[ERROR] error decoding the response object into iceCreds obj")
-		return iceCreds, err
+	err = json.NewDecoder(resp.Body).Decode(&iceCreds)
+	if err != nil || resp.StatusCode == http.StatusNotFound {
+		log.Println("[ERROR] error decoding the response object into iceCreds obj [OR] remote creds not available yet")
+		return models.ICECreds{ICEUfrag: "", ICEPwd: ""}, err
 	}
-	if resp.StatusCode != http.StatusOK {
-		return iceCreds, errors.New("[ERROR] ice agent at the peer not started yet")
-	}
+	//this if never gets executed because 404 throws err
 	return iceCreds, nil
+}
+
+func AddCandidate(connectionIdentifier models.ConnectionIdentifier, candiate string) error {
+	reqBody, err := json.Marshal(models.RegisterCandidateRequest{
+		ConnectionIdentifier: connectionIdentifier,
+		Candidate:            candiate,
+	})
+	resp, err := http.Post(fmt.Sprintf("%s/api/ice/candidate", config.SERVER_URL), "application/json", bytes.NewBuffer(reqBody))
+	if err != nil {
+		log.Println("[ERROR] error registering the candidate", err)
+		return err
+	}
+	if resp.StatusCode != http.StatusCreated {
+		log.Println("[ERROR] received status code " + strconv.Itoa(resp.StatusCode))
+	}
+	return nil
+}
+
+func GetCandidate(connectionIdentifier models.ConnectionIdentifier) ([]string, error) {
+	url := fmt.Sprintf("%s/api/ice/candidate/%s/%s/%s",
+		config.SERVER_URL,
+		connectionIdentifier.UserId,
+		connectionIdentifier.LocalNodeId,
+		connectionIdentifier.RemoteNodeId)
+	resp, err := http.Get(url)
+
+	log.Println("[INFO] hitting url ", url)
+	if err != nil {
+		log.Println("[ERROR] error hitting the url")
+		return nil, err
+	}
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, fmt.Errorf("candidates not found")
+	}
+	var respObj struct {
+		candidates []string
+	}
+	json.NewDecoder(resp.Body).Decode(&respObj)
+	return respObj.candidates, nil
 }

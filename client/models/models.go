@@ -1,8 +1,6 @@
 package models
 
 import (
-	"net"
-
 	"github.com/pion/ice/v2"
 )
 
@@ -34,7 +32,6 @@ type Peer struct {
 	Hostname  string `json:"hostname"`
 	PublicKey string `json:"public_key" bson:"public_key"`
 	IPAddress string `json:"ip_address" bson:"ip_address"`
-	Endpoint  string `json:"endpoint"`
 	NodeId    string `json:"node_id" bson:"node_id"`
 }
 
@@ -62,11 +59,13 @@ type PeerState struct {
 	Peer Peer
 
 	Agent *ice.Agent
-	Conn  *net.Conn
+	Conn  *ice.Conn
 
-	LocalUFrag string
-	LocalPwd   string
+	LocalCreds  ICECreds
+	RemoteCreds ICECreds
 
 	//TODO: make the connected variable a enum, the states will be  connected/relayed/disconnected
-	Connected bool
+	ConnectedStatus bool
+	// PeerStatus        bool
+	IsRemoteConnected bool
 }

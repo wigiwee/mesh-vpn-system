@@ -1,13 +1,17 @@
 package main
 
 import (
+	"client/api"
+	"client/config"
+	"client/models"
+	"fmt"
 	"log"
 
 	"github.com/pion/ice/v2"
 	"github.com/pion/stun"
 )
 
-func GetAgent() *ice.Agent {
+func GetAgent(remoteNodeId string) *ice.Agent {
 
 	agentConfig := &ice.AgentConfig{
 
@@ -30,6 +34,25 @@ func GetAgent() *ice.Agent {
 	agent.OnConnectionStateChange(func(state ice.ConnectionState) {
 		log.Println("[INFO] ICE stagechange to " + state.String())
 	})
+
+	agent.OnCandidate(func(c ice.Candidate) {
+		if c == nil {
+			fmt.Println("candidate gathering finished")
+			return
+		}
+		fmt.Println("booyah got a candidate ", c.String())
+		err := api.AddCandidate(models.ConnectionIdentifier{
+			UserId:       config.ConfigObj.UserId,
+			LocalNodeId:  config.ConfigObj.NodeId,
+			RemoteNodeId: remoteNodeId,
+		}, c.Marshal())
+		if err != nil {
+			log.Println("[ERROR] adding the candiate", remoteNodeId)
+		}
+		fmt.Println("added candidate")
+	})
+
+	agent.GatherCandidates()
 
 	return agent
 

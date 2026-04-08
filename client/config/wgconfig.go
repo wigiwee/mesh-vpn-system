@@ -20,11 +20,11 @@ func WriteWGConfig() error {
 }
 
 // TODO: revise this method, use ice endpoint
-func AddPeer(p models.Peer) error {
+func AddPeer(p models.Peer, endpoint string) error {
 	exec.Command("wg", "set", INTERFACE_NAME,
 		"peer", p.PublicKey,
 		"allowed-ips", p.IPAddress+"/32",
-		"endpoint", p.Endpoint,
+		"endpoint", endpoint,
 	).Run()
 	return nil
 }

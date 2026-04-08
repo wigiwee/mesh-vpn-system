@@ -3,14 +3,16 @@ package main
 import (
 	"client/api"
 	"client/config"
-	"client/helper"
 	"client/models"
+	"context"
 	"crypto/rand"
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
 	"time"
 
+	"github.com/pion/ice/v2"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
@@ -85,7 +87,6 @@ func main() {
 
 	//Daemon loop
 	for {
-
 		//fetching node peers
 		log.Println("[INFO] starting application loop ", config.PeerState)
 		peers, err := api.GetPeers(config.ConfigObj.UserId, config.ConfigObj.NodeId)
@@ -93,76 +94,110 @@ func main() {
 			log.Println("[ERROR] error fetching peers ", err.Error())
 		}
 		log.Println("[DEBUG] received peers ", peers)
-
-		//comparing newly fetched peers
-		added, removed := helper.SyncPeers(peers)
-		log.Println("[DEBUG] calcuated peer difference as added: ", added, " removed: ", removed)
-
-		log.Println("[INFO] syncing the peers")
-		// for _, peer := range added {
-		// 	//this is where we generate the agent and establish the connection
-		// 	agent := GetAgent()
-		// 	id, pwd, _ := agent.GetLocalUserCredentials()
-		// 	candidates := []string{}
-		// 	agent.OnCandidate(func(c ice.Candidate) {
-		// 		if c == nil {
-		// 			return
-		// 		}
-		// 		log.Println("[INFO] found candidate " + c.String())
-		// 		candidates = append(candidates, c.String())
-		// 	})
-		// 	agent.GatherCandidates()
-		// 	time.Sleep(2 * time.Second)
-
-		// 	api.RegisterIceCreds(models.ICECredsRegisterRequest{
-		// 		LocalNodeId:  config.ConfigObj.NodeId,
-		// 		RemoteNodeId: peer.NodeId,
-		// 		UserId:       config.ConfigObj.UserId,
-		// 		ICECreds: models.ICECreds{
-		// 			ICEUfrag:   id,
-		// 			ICEPwd:     pwd,
-		// 			Candidates: candidates,
-		// 		},
-		// 	})
-
-		// 	remoteCreds, err := api.FetchIceCreds(models.ICECredsFetchRequest{
-		// 		LocalNodeId:  peer.NodeId,
-		// 		RemoteNodeId: config.ConfigObj.NodeId,
-		// 		UserId:       config.ConfigObj.UserId,
-		// 	})
-		// 	if err != nil {
-
-		// 	}
-		// 	agent.SetRemoteCredentials(id, pwd)
-		// 	for _, candidate := range remoteCreds.Candidates {
-		// 		candidate, err := ice.UnmarshalCandidate(candidate)
-		// 		if err != nil {
-		// 			fmt.Println("error decoding the candidate ", candidate, err)
-		// 		}
-		// 		agent.AddRemoteCandidate(candidate)
-		// 	}
-		// 	var conn net.Conn
-		// 	if config.ConfigObj.NodeId > peer.NodeId {
-		// 		conn, _ = agent.Dial(context.Background(), id, pwd)
-		// 	} else {
-		// 		conn, _ = agent.Accept(context.Background(), id, pwd)
-		// 	}
-
-		// 	config.AddPeer(peer)
-		// 	config.PeerState[peer.PublicKey] = models.PeerState{
-		// 		Peer:       peer,
-		// 		Agent:      agent,
-		// 		Conn:       &conn,
-		// 		LocalUFrag: id,
-		// 		LocalPwd:   pwd,
-		// 		Connected:  true,
-		// 	}
-		// }
-
-		for _, peer := range removed {
-			config.RemovePeer(peer)
-			delete(config.PeerState, peer.PublicKey)
+		for _, peer := range peers {
+			localConnIdentifier := models.ConnectionIdentifier{
+				LocalNodeId:  config.ConfigObj.NodeId,
+				RemoteNodeId: peer.NodeId,
+				UserId:       config.ConfigObj.UserId}
+			_, ifExist := config.PeerState[localConnIdentifier]
+			if !ifExist {
+				agent := GetAgent(peer.NodeId)
+				id, pwd, _ := agent.GetLocalUserCredentials()
+				creds := models.ICECreds{
+					ICEUfrag: id,
+					ICEPwd:   pwd,
+				}
+				err := api.RegisterIceCreds(localConnIdentifier, creds)
+				if err != nil {
+					log.Println("[ERROR] error registering the ice creds for remoteNode:", peer.NodeId)
+				}
+				config.PeerState[localConnIdentifier] = models.PeerState{
+					Peer:       peer,
+					Agent:      agent,
+					Conn:       nil,
+					LocalCreds: creds,
+					// RemoteCreds:     models.ICECreds{ICEUfrag: "", ICEPwd: ""},
+					ConnectedStatus:   false,
+					IsRemoteConnected: false,
+				}
+			}
 		}
+
+		for localConnIdentifier, peerState := range config.PeerState {
+			if peerState.RemoteCreds.ICEPwd == "" && peerState.RemoteCreds.ICEUfrag == "" {
+				remoteConnIdentifier := models.ConnectionIdentifier{
+					LocalNodeId:  localConnIdentifier.RemoteNodeId,
+					RemoteNodeId: localConnIdentifier.LocalNodeId,
+					UserId:       localConnIdentifier.UserId,
+				}
+				remoteCreds, err := api.GetIceCredentials(remoteConnIdentifier)
+				if err != nil {
+					log.Println("[ERROR] error fetching remote creds ", err)
+					continue
+				}
+				candidates, err := api.GetCandidate(remoteConnIdentifier)
+				if err != nil {
+					log.Println("[ERROR] error fetching the candidates", err)
+					continue
+				}
+				ps := config.PeerState[localConnIdentifier]
+				ps.RemoteCreds = remoteCreds
+				peerState.Agent.SetRemoteCredentials(remoteCreds.ICEUfrag, remoteCreds.ICEPwd)
+
+				config.PeerState[localConnIdentifier] = ps
+				//TODO: here candidates are added initially, it shouldn't be like this
+				for _, candidateStr := range candidates {
+					candidate, err := ice.UnmarshalCandidate(candidateStr)
+					fmt.Println("candidate :: ", candidate.String())
+					if err != nil {
+						log.Println("[ERROR] error unmarshaling the candidates string ", candidateStr)
+						continue
+					}
+					peerState.Agent.AddRemoteCandidate(candidate)
+				}
+				if localConnIdentifier.LocalNodeId > localConnIdentifier.RemoteNodeId {
+					go dial(peerState.Agent, localConnIdentifier)
+				} else {
+					go accept(peerState.Agent, localConnIdentifier)
+				}
+			}
+		}
+		fmt.Println("i made it to here")
+
+		for _, peerState := range config.PeerState {
+			fmt.Println(peerState)
+			fmt.Println(peerState.IsRemoteConnected)
+			if peerState.IsRemoteConnected {
+				fmt.Println("i shouldn't be here")
+				config.AddPeer(peerState.Peer, peerState.Conn.RemoteAddr().String())
+			}
+		}
+		fmt.Println("damn i made it to here")
+		//TODO:ping the [ConnectedStatus: true] peers to check if they are still connected
 		time.Sleep(10 * time.Second)
 	}
+}
+
+func dial(agent *ice.Agent, connIdentifier models.ConnectionIdentifier) {
+	log.Println("[INFO] dialing connection")
+	ps := config.PeerState[connIdentifier]
+	conn, err := agent.Dial(context.Background(), ps.RemoteCreds.ICEUfrag, ps.RemoteCreds.ICEPwd)
+	if err != nil {
+		log.Println(err)
+	}
+
+	ps.IsRemoteConnected = true
+	ps.Conn = conn
+	config.PeerState[connIdentifier] = ps
+	log.Println("connection successful")
+}
+
+func accept(agent *ice.Agent, connIdentifier models.ConnectionIdentifier) {
+	log.Println("[INFO] accepting connection")
+	conn, _ := agent.Accept(context.Background(), "", "")
+	peerState := config.PeerState[connIdentifier]
+	peerState.IsRemoteConnected = true
+	peerState.Conn = conn
+	config.PeerState[connIdentifier] = peerState
+	log.Println("connection successful")
 }
