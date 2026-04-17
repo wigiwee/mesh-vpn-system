@@ -194,10 +194,13 @@ func dial(agent *ice.Agent, connIdentifier models.ConnectionIdentifier) {
 
 func accept(agent *ice.Agent, connIdentifier models.ConnectionIdentifier) {
 	log.Println("[INFO] accepting connection")
-	conn, _ := agent.Accept(context.Background(), "", "")
-	peerState := config.PeerState[connIdentifier]
-	peerState.IsRemoteConnected = true
-	peerState.Conn = conn
-	config.PeerState[connIdentifier] = peerState
+	ps := config.PeerState[connIdentifier]
+	conn, err := agent.Accept(context.Background(), ps.RemoteCreds.ICEUfrag, ps.RemoteCreds.ICEPwd)
+	if err != nil {
+		log.Println(err)
+	}
+	ps.IsRemoteConnected = true
+	ps.Conn = conn
+	config.PeerState[connIdentifier] = ps
 	log.Println("connection successful")
 }

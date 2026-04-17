@@ -26,6 +26,9 @@ func Router() *mux.Router {
 	r.HandleFunc("/api/ice/candidate", controllers.RegisterIceCandidate).Methods("POST")
 	r.HandleFunc("/api/ice/candidate/{user_id}/{local_node_id}/{remote_node_id}", controllers.GetConnectionsCandidates).Methods("GET")
 
+	//event route
+	r.HandleFunc("/events/{user_id}/{node_id}", controllers.HandleEvents)
+
 	// auth routes
 	// r.HandleFunc("/api/registerUser", RegisterUser())
 	// r.HandleFunc("/api/registerUser", RegisterUser())

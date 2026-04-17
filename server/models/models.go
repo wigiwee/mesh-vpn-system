@@ -75,3 +75,8 @@ type RegisterCredentialsRequest struct {
 	ConnectionIdentifier ConnectionIdentifier `json:"connection_identifier" bson:"connection_identifier"`
 	ICECreds             ICECreds             `json:"ice_creds" bson:"ice_creds"`
 }
+
+type Events struct {
+	Type    string `json:"event_type"`
+	Payload string `json:"payload"`
+}
